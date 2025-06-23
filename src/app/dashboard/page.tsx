@@ -22,6 +22,17 @@ export default function Dashboard() {
     }
   };
 
+  const fetchSentMessagesToday = async () => {
+    setStatus("🔄 Buscando mensagens enviadas hoje...");
+    try {
+      const res = await api.get("/messages/sent-today");
+      setStatus(`✅ Mensagens enviadas hoje: ${JSON.stringify(res.data)}`);
+    } catch (err: any) {
+      setStatus(`❌ Erro: ${err.response?.data?.error || err.message}`);
+    }
+  };
+  
+
   return (
     <div className="flex h-screen">
       {/* Sidebar */}
@@ -92,6 +103,14 @@ export default function Dashboard() {
             >
               Notificação Suporte
             </button>
+
+            <button
+              onClick={fetchSentMessagesToday}
+              className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
+              >
+              Ver mensagens enviadas hoje
+            </button>
+
           </div>
 
           {status && (

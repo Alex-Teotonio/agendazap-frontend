@@ -112,12 +112,34 @@ export default function Dashboard() {
             </button>
 
           </div>
-
           {status && (
-            <div className="bg-white rounded p-4 shadow mt-4 text-sm whitespace-pre-wrap">
-              {status}
-            </div>
-          )}
+  <div className="bg-white rounded p-4 shadow mt-4 text-sm whitespace-pre-wrap">
+    {status}
+    {status.startsWith("✅ Mensagens enviadas hoje:") && (() => {
+      try {
+        const json = JSON.parse(status.replace(/^✅ Mensagens enviadas hoje: /, ""));
+        return json.details.map((msg: any) => (
+          <div key={msg.sid} className="border-b py-2">
+            <div><strong>Para:</strong> {msg.to}</div>
+            <div><strong>Status:</strong> {msg.status}</div>
+            <div><strong>Mensagem:</strong> {msg.body}</div>
+            <div><strong>Enviado em:</strong> {msg.dateSent || 'N/A'}</div>
+            {msg.errorCode && (
+              <div className="text-red-500">
+                <strong>Erro:</strong> {msg.errorCode} - {msg.errorMessage}
+              </div>
+            )}
+          </div>
+        ));
+      } catch (e) {
+        console.error("Erro ao processar JSON:", e);
+        return <div className="text-red-500">Erro ao processar os detalhes das mensagens.</div>;
+      }
+    })()}
+  </div>
+)}
+
+
         </div>
       </div>
     </div>

@@ -1,27 +1,62 @@
-// components/LoginForm.tsx
-"use client";
+'use client'
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/axios";
 import { Button } from "@/components/ui/button";
 
+// Se preferir instalar, pode usar a lib `jwt-decode`:
+// import jwt_decode from "jwt-decode";
+
+type JWTPayload = {
+  nutriId: string;
+  email: string;
+  iat: number;
+  exp: number;
+};
+
 export function LoginForm() {
-  const [email, setEmail] = useState("");
-  const [senha, setSenha] = useState("");
+  const [email, setEmail] = useState<string>("");
+  const [senha, setSenha] = useState<string>("");
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await api.post("/login", { email, senha });
+      // 1) Faz login e recebe apenas o token
+      const res = await api.post<{ token: string }>("/auth/login", {
+        email,
+        password: senha, // note: backend espera "password"
+      });
       const { token } = res.data;
-      // salva no localStorage (ou cookie) para usar no Dashboard
+
+      // 2) Decodifica o payload do JWT para extrair o nutriId
+      const [, payloadBase64] = token.split(".");
+      const decoded = JSON.parse(
+        decodeURIComponent(
+          Array.prototype.map
+            .call(atob(payloadBase64.replace(/_/g, "/").replace(/-/g, "+")), (c) =>
+              "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)
+            )
+            .join("")
+        )
+      ) as JWTPayload;
+      const { nutriId } = decoded;
+
+      // 3) Salva em localStorage
       localStorage.setItem("token", token);
-      // redireciona para a Dashboard
+      localStorage.setItem("nutriId", nutriId);
+
+      // 4) Configura no axios
+      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+
+      // 5) Redireciona
       router.push("/dashboard");
-    } catch (err) {
+    } 
+    //eslint-disable-next-line @typescript-eslint/no-explicit-any
+    catch (err: any) {
       console.error(err);
-      alert("Erro no login");
+      alert("Erro no login. Verifique suas credenciais.");
     }
   };
 
@@ -32,7 +67,7 @@ export function LoginForm() {
         type="email"
         placeholder="Email"
         value={email}
-        onChange={e => setEmail(e.target.value)}
+        onChange={(e) => setEmail(e.target.value)}
         required
       />
       <input
@@ -40,10 +75,12 @@ export function LoginForm() {
         type="password"
         placeholder="Senha"
         value={senha}
-        onChange={e => setSenha(e.target.value)}
+        onChange={(e) => setSenha(e.target.value)}
         required
       />
-      <Button type="submit" className="w-full">Entrar</Button>
+      <Button type="submit" className="w-full">
+        Entrar
+      </Button>
     </form>
   );
 }

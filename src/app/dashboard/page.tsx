@@ -5,18 +5,29 @@ import api from "@/lib/axios";
 import { Sidebar, SidebarItem } from "@/components/ui/sidebar";
 import { TopBar } from "@/components/ui/topbar";
 import { Home, Users, Calendar, Settings, Zap, RotateCw } from 'lucide-react';
-import { Avatar } from "@/components/ui/avatar";
 
 export default function Dashboard() {
   const [collapsed, setCollapsed] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+
+  // no Dashboard component
+const handleGoogleAuth = () => {
+  const token = localStorage.getItem("token");
+  if (!token) return alert("Você precisa estar logado");
+  // coloco o token na URL — atenção: expõe o token no histórico do browser!
+  window.location.href = 
+    `https://vprikxgmlf.execute-api.us-east-1.amazonaws.com/google/auth?token=${encodeURIComponent(token)}`;
+};
+
 
   const handleAction = async (path: string) => {
     setStatus(`? Executando: ${path}`);
     try {
       const res = await api.get(path);
       setStatus(`? Sucesso: ${JSON.stringify(res.data)}`);
-    } catch (err: any) {
+    } 
+    //@eslint-disable-next-line @typescript-eslint/no-explicit-any
+    catch (err: any) {
       const errorMsg = err.response?.data?.error || err.message;
       setStatus(`? Erro: ${errorMsg}`);
     }
@@ -27,7 +38,9 @@ export default function Dashboard() {
     try {
       const res = await api.get("/messages/sent-today");
       setStatus(`✅ Mensagens enviadas hoje: ${JSON.stringify(res.data)}`);
-    } catch (err: any) {
+    } 
+    // @eslint-disable-next-line @typescript-eslint/no-explicit-any
+    catch (err: any) {
       setStatus(`❌ Erro: ${err.response?.data?.error || err.message}`);
     }
   };
@@ -64,11 +77,13 @@ export default function Dashboard() {
       <div className="flex-1 flex flex-col bg-gray-50">
         <TopBar>
           <h1 className="text-xl font-semibold">Dashboard</h1>
-          <div className="flex items-center space-x-4">
-            <span className="text-sm text-green-600">WhatsApp: Conectado</span>
-            <span className="text-sm text-red-600">Google: Pendente</span>
-            <Avatar />
-          </div>
+          <button
+        onClick={handleGoogleAuth}
+        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+      >
+        Autenticar Google
+      </button>
+      {status && <div className="mt-4 text-sm">{status}</div>}
         </TopBar>
 
         <div className="p-6 space-y-4">
@@ -138,9 +153,7 @@ export default function Dashboard() {
     })()}
   </div>
 )}
-
-
-        </div>
+       </div>
       </div>
     </div>
   );

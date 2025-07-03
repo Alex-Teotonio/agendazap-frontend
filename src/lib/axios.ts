@@ -1,3 +1,4 @@
+// lib/axios.ts
 import axios from "axios";
 
 const api = axios.create({
@@ -8,9 +9,14 @@ const api = axios.create({
 
 // Sempre anexa o token JWT no header
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token"); // ou sessionStorage, conforme seu fluxo
-  if (token && config.headers) {
-    config.headers.Authorization = `Bearer ${token}`;
+  // s� em client
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("token");
+    console.log(">> Axios request para", config.url, "� token:", token);
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    console.log("   Headers finais:", config.headers);
   }
   return config;
 });

@@ -1,13 +1,15 @@
 'use client';
 
 import { useEffect, useState, FormEvent } from 'react';
+import axios from 'axios';
 import dynamic from 'next/dynamic';
 import Head from 'next/head';
 import api from '@/lib/axios';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
-import interactionPlugin, { DateClickArg, EventClickArg } from '@fullcalendar/interaction';
+import interactionPlugin, { DateClickArg } from '@fullcalendar/interaction';
 
+import { EventClickArg } from '@fullcalendar/core';
 const FullCalendar = dynamic(
   () => import('@fullcalendar/react').then((mod) => mod.default),
   { ssr: false }
@@ -71,12 +73,18 @@ export default function EventosPage() {
         ]);
         setPatients(pRes.data);
         setAppointments(aRes.data);
-      } catch (err: any) {
-        // Se for erro de autenticação Google, pedimos o OAuth
-        if (err.response?.status === 401 || err.response?.status === 403) {
-          setAuthNeeded(true);
+      } catch (err: unknown) {
+        // se for um erro do Axios, podemos usar isAxiosError
+        if (axios.isAxiosError(err)) {
+          const status = err.response?.status;
+          if (status === 401 || status === 403) {
+            setAuthNeeded(true);
+          } else {
+            setError(err.message);
+          }
         } else {
-          setError(err.message || 'Erro ao carregar dados');
+          // algum outro tipo de erro
+          setError(String(err) || 'Erro ao carregar dados');
         }
       } finally {
         setLoading(false);
@@ -84,6 +92,7 @@ export default function EventosPage() {
     }
     loadData();
   }, []);
+  
 
   const handleDateClick = (arg: DateClickArg) => {
     setSelectedDate(arg.dateStr);
@@ -112,13 +121,20 @@ export default function EventosPage() {
       const res = await api.post<{ appointment: Appointment }>('/appointments', payload);
       setAppointments(curr => [...curr, res.data.appointment]);
       setSummary(''); setDescription(''); setLocation('');
-    } catch (err: any) {
-      // Se for token Google expirado, redireciona
-      if (err.response?.status === 401 || err.response?.status === 403) {
-        redirectToGoogleAuth();
-        return;
+    } catch (err: unknown) {
+      // Se for um erro Axios, tratamos o status
+      if (axios.isAxiosError(err)) {
+        const status = err.response?.status;
+        if (status === 401 || status === 403) {
+          redirectToGoogleAuth();
+          return;
+        }
+        // pega a mensagem customizada ou a genérica
+        setError(err.response?.data?.error ?? err.message);
+      } else {
+        // qualquer outro tipo de erro
+        setError(String(err) || 'Erro ao agendar');
       }
-      setError(err.response?.data?.error || err.message || 'Erro ao agendar');
     } finally {
       setSubmitting(false);
     }

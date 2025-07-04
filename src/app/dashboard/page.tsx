@@ -6,18 +6,56 @@ import { Sidebar, SidebarItem } from "@/components/ui/sidebar";
 import { TopBar } from "@/components/ui/topbar";
 import { Home, Users, Calendar, Settings, Zap, RotateCw } from 'lucide-react';
 
+interface SentMessageDetail {
+  sid: string;
+  to: string;
+  body: string;
+  status: string;
+  dateSent?: string;
+  dateCreated?: string;
+  errorCode?: string;
+  errorMessage?: string;
+}
+
+
 export default function Dashboard() {
   const [collapsed, setCollapsed] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
   // no Dashboard component
-const handleGoogleAuth = () => {
-  const token = localStorage.getItem("token");
-  if (!token) return alert("Você precisa estar logado");
-  // coloco o token na URL — atenção: expõe o token no histórico do browser!
-  window.location.href = 
-    `https://vprikxgmlf.execute-api.us-east-1.amazonaws.com/google/auth?token=${encodeURIComponent(token)}`;
-};
+
+  const handleGoogleAuth = async () => {
+    const token = localStorage.getItem('token')
+    if (!token) return alert('Você precisa estar logado')
+
+    setStatus('🔑 Iniciando autenticação com Google…')
+    try {
+      const res = await fetch('/api/google-auth', {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}` },
+        redirect: 'manual',
+      })
+
+      // deve vir 302 com header location
+      if (res.status === 302) {
+        const url = res.headers.get('location')
+        if (url) {
+          window.location.href = url
+        } else {
+          throw new Error('Cabeçalho “location” não encontrado')
+        }
+      } else {
+        const err = await res.json()
+        throw new Error(err.error || 'Falha ao iniciar OAuth')
+      }
+    } 
+    catch (_err: unknown) {
+      const err = _err instanceof Error
+        ? _err
+        : new Error('Erro desconhecido ao iniciar OAuth')
+      setStatus(`❌ ${err.message}`)
+    }
+  }
 
 
   const handleAction = async (path: string) => {
@@ -26,10 +64,11 @@ const handleGoogleAuth = () => {
       const res = await api.get(path);
       setStatus(`? Sucesso: ${JSON.stringify(res.data)}`);
     } 
-    //@eslint-disable-next-line @typescript-eslint/no-explicit-any
-    catch (err: any) {
-      const errorMsg = err.response?.data?.error || err.message;
-      setStatus(`? Erro: ${errorMsg}`);
+    catch (_err: unknown) {
+      const err = _err instanceof Error
+        ? _err
+        : new Error('Erro desconhecido ao iniciar OAuth')
+      setStatus(`❌ ${err.message}`)
     }
   };
 
@@ -39,9 +78,11 @@ const handleGoogleAuth = () => {
       const res = await api.get("/messages/sent-today");
       setStatus(`✅ Mensagens enviadas hoje: ${JSON.stringify(res.data)}`);
     } 
-    // @eslint-disable-next-line @typescript-eslint/no-explicit-any
-    catch (err: any) {
-      setStatus(`❌ Erro: ${err.response?.data?.error || err.message}`);
+    catch (_err: unknown) {
+      const err = _err instanceof Error
+        ? _err
+        : new Error('Erro desconhecido ao iniciar OAuth')
+      setStatus(`❌ ${err.message}`)
     }
   };
   
@@ -132,8 +173,11 @@ const handleGoogleAuth = () => {
     {status}
     {status.startsWith("✅ Mensagens enviadas hoje:") && (() => {
       try {
-        const json = JSON.parse(status.replace(/^✅ Mensagens enviadas hoje: /, ""));
-        return json.details.map((msg: any) => (
+
+        const parsed = JSON.parse(
+          status.replace(/^✅ Mensagens enviadas hoje: /, "")
+        ) as { details: SentMessageDetail[] };
+        return parsed.details.map((msg) => (
           <div key={msg.sid} className="border-b py-2">
             <div><strong>Para:</strong> {msg.to}</div>
             <div><strong>Status:</strong> {msg.status}</div>

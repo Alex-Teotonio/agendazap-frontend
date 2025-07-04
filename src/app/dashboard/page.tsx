@@ -24,40 +24,16 @@ export default function Dashboard() {
 
   // no Dashboard component
 
-  const handleGoogleAuth = async () => {
-    const token = localStorage.getItem('token')
-    if (!token) return alert('Você precisa estar logado')
-
-    setStatus('🔑 Iniciando autenticação com Google…')
-    try {
-      const res = await fetch('/api/google-auth', {
-        method: 'GET',
-        headers: { Authorization: `Bearer ${token}` },
-        redirect: 'manual',
-      })
-
-      // deve vir 302 com header location
-      if (res.status === 302) {
-        const url = res.headers.get('location')
-        if (url) {
-          window.location.href = url
-        } else {
-          throw new Error('Cabeçalho “location” não encontrado')
-        }
-      } else {
-        const err = await res.json()
-        throw new Error(err.error || 'Falha ao iniciar OAuth')
-      }
-    } 
-    catch (_err: unknown) {
-      const err = _err instanceof Error
-        ? _err
-        : new Error('Erro desconhecido ao iniciar OAuth')
-      setStatus(`❌ ${err.message}`)
-    }
-  }
-
-
+  const handleGoogleAuth = () => {
+    const token = localStorage.getItem("token");
+    if (!token) return alert("VocÃª precisa estar logado");
+    // coloco o token na URL â€” atenÃ§Ã£o: expÃµe o token no histÃ³rico do browser!
+    window.location.href = 
+      `https://vprikxgmlf.execute-api.us-east-1.amazonaws.com/google/auth?token=${encodeURIComponent(token)}`;
+  };
+  
+  
+  
   const handleAction = async (path: string) => {
     setStatus(`? Executando: ${path}`);
     try {
@@ -130,15 +106,6 @@ export default function Dashboard() {
         <div className="p-6 space-y-4">
           <h2 className="text-lg font-semibold">Operações</h2>
           <div className="flex flex-wrap gap-4">
-          <button
-          onClick={() => {
-            setStatus("🔑 Redirecionando para autenticação...");
-            window.location.href = "https://vprikxgmlf.execute-api.us-east-1.amazonaws.com/google/auth";
-          }}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
-          Autenticar Google
-        </button>
 
 
             <button

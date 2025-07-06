@@ -1,86 +1,89 @@
+// features/auth/LoginForm.tsx
 'use client'
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import api from "@/lib/axios";
-import { Button } from "@/components/ui/button";
-
-// Se preferir instalar, pode usar a lib `jwt-decode`:
-// import jwt_decode from "jwt-decode";
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import api from '@/lib/axios'
+import { Button } from '@/components/ui/button'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 type JWTPayload = {
-  nutriId: string;
-  email: string;
-  iat: number;
-  exp: number;
-};
+  nutriId: string
+  email: string
+  iat: number
+  exp: number
+}
 
 export function LoginForm() {
-  const [email, setEmail] = useState<string>("");
-  const [senha, setSenha] = useState<string>("");
-  const router = useRouter();
+  const [email, setEmail] = useState('')
+  const [senha, setSenha] = useState('')
+  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
     try {
-      // 1) Faz login e recebe apenas o token
-      const res = await api.post<{ token: string }>("/auth/login", {
+      const res = await api.post<{ token: string }>('/auth/login', {
         email,
-        password: senha, // note: backend espera "password"
-      });
-      const { token } = res.data;
+        password: senha,
+      })
+      const { token } = res.data
+      const [, base64] = token.split('.')
+      const payload = JSON.parse(atob(base64)) as JWTPayload
 
-      // 2) Decodifica o payload do JWT para extrair o nutriId
-      const [, payloadBase64] = token.split(".");
-      const decoded = JSON.parse(
-        decodeURIComponent(
-          Array.prototype.map
-            .call(atob(payloadBase64.replace(/_/g, "/").replace(/-/g, "+")), (c) =>
-              "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)
-            )
-            .join("")
-        )
-      ) as JWTPayload;
-      const { nutriId } = decoded;
+      localStorage.setItem('token', token)
+      localStorage.setItem('nutriId', payload.nutriId)
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`
 
-      // 3) Salva em localStorage
-      localStorage.setItem("token", token);
-      localStorage.setItem("nutriId", nutriId);
-
-      // 4) Configura no axios
-      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
-      // 5) Redireciona
-      router.push("/dashboard");
-    } 
-    //eslint-disable-next-line @typescript-eslint/no-explicit-any
-    catch (err: any) {
-      console.error(err);
-      alert("Erro no login. Verifique suas credenciais.");
+      router.push('/dashboard')
+    } catch {
+      alert('Erro no login. Verifique email e senha.')
     }
-  };
+  }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 max-w-sm mx-auto mt-10">
-      <input
-        className="w-full border rounded p-2"
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
-      />
-      <input
-        className="w-full border rounded p-2"
-        type="password"
-        placeholder="Senha"
-        value={senha}
-        onChange={(e) => setSenha(e.target.value)}
-        required
-      />
-      <Button type="submit" className="w-full">
-        Entrar
-      </Button>
-    </form>
-  );
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle className="text-xl font-bold text-card-foreground text-center">
+          Entrar
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1">
+            <Label htmlFor="email" className="text-muted-foreground">
+              Email
+            </Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="seu@exemplo.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="mt-1 bg-input placeholder-muted-foreground text-foreground"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="senha" className="text-muted-foreground">
+              Senha
+            </Label>
+            <Input
+              id="senha"
+              type="password"
+              placeholder="••••••••"
+              value={senha}
+              onChange={(e) => setSenha(e.target.value)}
+              required
+              className="mt-1 bg-input placeholder-muted-foreground text-foreground"
+            />
+          </div>
+          <Button type="submit" variant="default" className="w-full">
+            Entrar
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  )
 }

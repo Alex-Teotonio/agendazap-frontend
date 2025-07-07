@@ -61,6 +61,8 @@ export default function EventosPage() {
   const [summary, setSummary] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
+  const [startTime, setStartTime] = useState('10:00');
+  const [endTime, setEndTime] = useState('11:00');
   const [submitting, setSubmitting] = useState(false);
 
   const redirectToGoogleAuth = () => {
@@ -110,16 +112,19 @@ export default function EventosPage() {
         summary,
         description,
         location,
-        start: `${selectedDate}T00:00:00.000Z`,
-        end:   `${selectedDate}T00:00:00.000Z`,
+        start: `${selectedDate}T${startTime}:00.000Z`,
+        end:   `${selectedDate}T${endTime}:00.000Z`,
       };
       const res = await api.post<{ appointment: Appointment }>('/appointments', payload);
       setAppointments(curr => [...curr, res.data.appointment]);
       setModalOpen(false);
+      // reset form
       setSelectedPatient('');
       setSummary('');
       setDescription('');
       setLocation('');
+      setStartTime('10:00');
+      setEndTime('11:00');
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         const status = err.response?.status;
@@ -208,6 +213,28 @@ export default function EventosPage() {
                 onChange={e => setLocation(e.target.value)}
                 className="w-full border rounded p-2"
               />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block font-medium">Início</label>
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={e => setStartTime(e.target.value)}
+                  className="w-full border rounded p-2"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block font-medium">Fim</label>
+                <input
+                  type="time"
+                  value={endTime}
+                  onChange={e => setEndTime(e.target.value)}
+                  className="w-full border rounded p-2"
+                  required
+                />
+              </div>
             </div>
             <div className="flex justify-end">
               <Button type="submit" disabled={submitting}>

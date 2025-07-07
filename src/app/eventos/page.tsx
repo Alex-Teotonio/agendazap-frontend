@@ -9,6 +9,9 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin, { DateClickArg } from '@fullcalendar/interaction';
 
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+
 import { EventClickArg } from '@fullcalendar/core';
 const FullCalendar = dynamic(
   () => import('@fullcalendar/react').then((mod) => mod.default),
@@ -44,20 +47,20 @@ type Appointment = {
 };
 
 export default function EventosPage() {
+  // estado geral
   const [patients, setPatients] = useState<Patient[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [authNeeded, setAuthNeeded] = useState(false);
 
-  // Form state
+  // modal e formulário
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedPatient, setSelectedPatient] = useState<string>('');
   const [summary, setSummary] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
-  const [selectedDate, setSelectedDate] = useState<string>('');
-  const [startTime, setStartTime] = useState('10:00');
-  const [endTime, setEndTime] = useState('11:00');
   const [submitting, setSubmitting] = useState(false);
 
   const redirectToGoogleAuth = () => {
@@ -74,7 +77,6 @@ export default function EventosPage() {
         setPatients(pRes.data);
         setAppointments(aRes.data);
       } catch (err: unknown) {
-        // se for um erro do Axios, podemos usar isAxiosError
         if (axios.isAxiosError(err)) {
           const status = err.response?.status;
           if (status === 401 || status === 403) {
@@ -83,7 +85,6 @@ export default function EventosPage() {
             setError(err.message);
           }
         } else {
-          // algum outro tipo de erro
           setError(String(err) || 'Erro ao carregar dados');
         }
       } finally {
@@ -92,47 +93,42 @@ export default function EventosPage() {
     }
     loadData();
   }, []);
-  
 
   const handleDateClick = (arg: DateClickArg) => {
     setSelectedDate(arg.dateStr);
-  };
-  const handleEventClick = (arg: EventClickArg) => {
-    alert(
-      `Consulta: ${arg.event.title}\n` +
-      `Início: ${arg.event.start?.toLocaleString()}\n` +
-      `Fim: ${arg.event.end?.toLocaleString()}`
-    );
+    setModalOpen(true);
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!selectedPatient || !selectedDate) return;
     setSubmitting(true);
     setError(null);
 
     try {
-      const start = `${selectedDate}T${startTime}:00.000Z`;
-      const end   = `${selectedDate}T${endTime}:00.000Z`;
       const payload = {
         pacienteId: selectedPatient,
-        summary, description, location, start, end,
+        summary,
+        description,
+        location,
+        start: `${selectedDate}T00:00:00.000Z`,
+        end:   `${selectedDate}T00:00:00.000Z`,
       };
       const res = await api.post<{ appointment: Appointment }>('/appointments', payload);
       setAppointments(curr => [...curr, res.data.appointment]);
-      setSummary(''); setDescription(''); setLocation('');
+      setModalOpen(false);
+      setSelectedPatient('');
+      setSummary('');
+      setDescription('');
+      setLocation('');
     } catch (err: unknown) {
-      // Se for um erro Axios, tratamos o status
       if (axios.isAxiosError(err)) {
         const status = err.response?.status;
         if (status === 401 || status === 403) {
           redirectToGoogleAuth();
           return;
         }
-        // pega a mensagem customizada ou a genérica
         setError(err.response?.data?.error ?? err.message);
       } else {
-        // qualquer outro tipo de erro
         setError(String(err) || 'Erro ao agendar');
       }
     } finally {
@@ -140,96 +136,44 @@ export default function EventosPage() {
     }
   };
 
-  // Enquanto carrega...
-  if (loading) {
-    return <div className="p-6">Carregando...</div>;
-  }
-
-  // Se precisamos primeiro autenticar no Google
-  if (authNeeded) {
+  if (loading) return <div className="p-6">Carregando...</div>;
+  if (authNeeded)
     return (
       <div className="p-6 text-center">
         <p className="mb-4 text-red-600">
           É necessário conectar sua conta Google para usar o calendário.
         </p>
-        <button
-          onClick={redirectToGoogleAuth}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
-          Conectar ao Google
-        </button>
+        <Button onClick={redirectToGoogleAuth}>Conectar ao Google</Button>
       </div>
     );
-  }
 
   return (
     <>
       {CAL_CSS}
-      <div className="flex space-x-6 p-6">
-        {/* Calendário */}
-        <div className="w-2/3">
-          <FullCalendar
-            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-            initialView="dayGridMonth"
-            headerToolbar={{
-              left: 'prev,next today',
-              center: 'title',
-              right: 'dayGridMonth,timeGridWeek,timeGridDay',
-            }}
-            selectable
-            dateClick={handleDateClick}
-            eventClick={handleEventClick}
-            events={appointments.map(e => ({
-              title: e.summary,
-              start: e.start,
-              end:   e.end,
-            }))}
-            height="auto"
-          />
-        </div>
+      <FullCalendar
+        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+        initialView="dayGridMonth"
+        headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }}
+        selectable
+        dateClick={handleDateClick}
+        events={appointments.map(e => ({ title: e.summary, start: e.start, end: e.end }))}
+        height="auto"
+      />
 
-        {/* Formulário */}
-        <div className="w-1/3 bg-white p-6 rounded shadow">
-          <h2 className="text-xl font-semibold mb-4">Agendar Consulta</h2>
-          {error && <div className="text-red-600 mb-2">{error}</div>}
-
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="sm:max-w-lg w-full">
+          <DialogHeader>
+            <DialogTitle>Agendar Consulta em {selectedDate}</DialogTitle>
+            <DialogClose />
+          </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block font-medium">Data</label>
-              <input
-                type="date"
-                className="w-full border rounded p-2"
-                value={selectedDate}
-                onChange={e => setSelectedDate(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <label className="block font-medium">Horário Início</label>
-              <input
-                type="time"
-                className="w-full border rounded p-2"
-                value={startTime}
-                onChange={e => setStartTime(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <label className="block font-medium">Horário Fim</label>
-              <input
-                type="time"
-                className="w-full border rounded p-2"
-                value={endTime}
-                onChange={e => setEndTime(e.target.value)}
-                required
-              />
-            </div>
+            {error && <div className="text-red-600">{error}</div>}
             <div>
               <label className="block font-medium">Paciente</label>
               <select
-                className="w-full border rounded p-2"
                 value={selectedPatient}
                 onChange={e => setSelectedPatient(e.target.value)}
+                className="w-full border rounded p-2"
                 required
               >
                 <option value="">Selecione...</option>
@@ -239,42 +183,40 @@ export default function EventosPage() {
               </select>
             </div>
             <div>
-              <label className="block font-medium">Título</label>
+              <label className="block font-medium">Resumo</label>
               <input
                 type="text"
-                className="w-full border rounded p-2"
                 value={summary}
                 onChange={e => setSummary(e.target.value)}
+                className="w-full border rounded p-2"
                 required
               />
             </div>
             <div>
               <label className="block font-medium">Descrição</label>
               <textarea
-                className="w-full border rounded p-2"
                 value={description}
                 onChange={e => setDescription(e.target.value)}
+                className="w-full border rounded p-2"
               />
             </div>
             <div>
               <label className="block font-medium">Local</label>
               <input
                 type="text"
-                className="w-full border rounded p-2"
                 value={location}
                 onChange={e => setLocation(e.target.value)}
+                className="w-full border rounded p-2"
               />
             </div>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 disabled:opacity-50"
-            >
-              {submitting ? 'Agendando...' : 'Agendar'}
-            </button>
+            <div className="flex justify-end">
+              <Button type="submit" disabled={submitting}>
+                {submitting ? 'Agendando...' : 'Agendar'}
+              </Button>
+            </div>
           </form>
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

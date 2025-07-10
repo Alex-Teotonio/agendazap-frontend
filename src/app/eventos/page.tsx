@@ -12,7 +12,6 @@ import interactionPlugin, { DateClickArg } from '@fullcalendar/interaction';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
-import { EventClickArg } from '@fullcalendar/core';
 const FullCalendar = dynamic(
   () => import('@fullcalendar/react').then((mod) => mod.default),
   { ssr: false }
@@ -36,15 +35,20 @@ const CAL_CSS = (
 );
 
 type Patient = { SK: string; nome: string };
+type DateTimeOrObject =
+  | string
+  | { dateTime: string; timeZone: string };
+
 type Appointment = {
   SK: string;
   pacienteId: string;
   summary: string;
   description: string;
   location: string;
-  start: string;
-  end: string;
+  start: DateTimeOrObject;
+  end: DateTimeOrObject;
 };
+
 
 export default function EventosPage() {
   // estado geral
@@ -76,6 +80,7 @@ export default function EventosPage() {
           api.get<Patient[]>('/patients'),
           api.get<Appointment[]>('/appointments'),
         ]);
+        console.log(pRes.data, aRes.data);
         setPatients(pRes.data);
         setAppointments(aRes.data);
       } catch (err: unknown) {
@@ -112,8 +117,15 @@ export default function EventosPage() {
         summary,
         description,
         location,
-        start: `${selectedDate}T${startTime}:00.000Z`,
-        end:   `${selectedDate}T${endTime}:00.000Z`,
+        // Remover o 'Z' para usar horário local e evitar conversão UTC
+        start: {
+          dateTime: `${selectedDate}T${startTime}:00`,
+          timeZone: "America/Sao_Paulo",
+        },
+        end: {
+          dateTime: `${selectedDate}T${endTime}:00`,
+          timeZone: "America/Sao_Paulo",
+        },
       };
       const res = await api.post<{ appointment: Appointment }>('/appointments', payload);
       setAppointments(curr => [...curr, res.data.appointment]);
@@ -161,9 +173,14 @@ export default function EventosPage() {
         headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }}
         selectable
         dateClick={handleDateClick}
-        events={appointments.map(e => ({ title: e.summary, start: e.start, end: e.end }))}
+        events={appointments.map(e => ({
+          title: e.summary,
+          start: typeof e.start === 'string' ? e.start : e.start.dateTime,
+          end: typeof e.end === 'string' ? e.end : e.end.dateTime,
+        }))}
         height="auto"
       />
+
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="sm:max-w-lg w-full">

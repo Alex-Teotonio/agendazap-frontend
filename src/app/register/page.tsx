@@ -28,7 +28,7 @@ export default function RegisterPage() {
     setFeedback(null);
 
     try {
-      const { data } = await api.post<RegisterResponse>("/register", form);
+      const { data } = await api.post<RegisterResponse>("/auth/register", form);
       // Exibe mensagem de sucesso (opcional)
       setFeedback(data.message);
 

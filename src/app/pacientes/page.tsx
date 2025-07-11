@@ -185,7 +185,7 @@ export default function PacientesPage() {
                   className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={telefoneWhatsapp}
                   onChange={e => setTelefoneWhatsapp(e.target.value)}
-                  placeholder="+55 (11) 99999-8888"
+                  placeholder="(31) 9999-8888"
                   required
                 />
               </div>
